@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<style>
+
+body {
+      font: 10px sans-serif;
+}
+.zoom {
+    cursor: move;
+    fill: none;
+    pointer-events: all;
+}
+
+.axis path,
+.axis line {
+    fill: none;
+    stroke: #000;
+    shape-rendering: crispEdges;
+}
+
+</style>
+<body>
+    <div style="border-bottom: 1px solid black; padding-bottom: 5px; margin-bottom: 10px">
+        <label>ESN: <input title="camera esn to report on" type="text" value="none" id="esn" class="query" /></label>
+        <label>Start: <input title="Start TS of interval, if none or blank defaults to 1 hour before end, can also be -<integer seconds in past>" type="text" value="none" id="start" class="query" /></label>
+        <label>End: <input title="End TS or interval, if none or blank defaults to now, can also be -<integer seconds in past>" type="text" value="none" id="end" class="query" /></label>
+        <button id="query">Query</button>
+    </div>
+</body>
+<script src="https://d3js.org/d3.v4.min.js"></script>
+<script src="/static/stacklat2.js"></script>
+<script>
+
+var w = window.innerWidth;
+var stacks = []
+var start_ts_text = null;
+var end_ts_text = null;
+var start_ts = 0.0; // real ts in float form
+var end_ts = 0.0; // real ts in float form
+var start_ts_een = null; // real ts in een format
+var end_ts_een = null; // real ts in een format
+var esn = null;
+
+function validate_esn(esn){
+    if(esn.search(/^\s*[0-9a-fA-F]{8}\s*$/)<0){
+        return null;
+    }
+    // it looks like an esn...get it...
+    var index = esn.search("[0-9a-fA-F]{8}");
+
+    return esn.slice(index,index+8);
+}
+
+d3.select("#query").on("click", function () {
+    esn = validate_esn(d3.select("#esn").property("value"));
+    if(esn == null){
+        alert("valid esn required");
+        return;
+    }
+    d3.select("#render").remove();
+    start_ts_text = d3.select("#start").property("value");
+    end_ts_text = d3.select("#end").property("value");
+    url = "/resolve/esn/times/"+esn+"/"+start_ts_text+"/"+end_ts_text;
+    d3.json(url,handle_resolve);
+
+});
+
+function getData(sl){
+    // fetch the data for this control...
+    // /txlog/previews/hostesn/209.94.248.23/100a97c8/-1h/now
+    url = "/txlog/previews/hostesn/"+sl.host+"/"+sl.esn+"/"+start_ts_een+"/"+end_ts_een;
+    d3.json(url,function (data) {
+        sl.setData(data.data);
+    });
+}
+
+/* we get back { "data": { "start_ts": float, "start_ts_een": "eents", ... "addrs": [ "addr1", "addr2",...] }
+   */
+function handle_resolve(data){
+    var count = 0;
+    start_ts = data.data.start_ts;
+    end_ts = data.data.end_ts;
+
+    start_ts_een = data.data.start_ts_een;
+    end_ts_een = data.data.end_ts_een;
+    var svg = d3.select("body").append("svg").attr("id","render").attr("width",w).attr("height",1500);
+
+    for (var index in data.data.addrs) {
+        var host = data.data.addrs[index];
+        var s = svg.append("svg").attr("id",host).attr("transform","translate(0,"+(count*500)+")");
+        var sl = StackLatNew(s,host,host,esn,w,500,start_ts,end_ts,StackLatDefaultFields);
+        getData(sl);
+        stacks.push(sl);
+        count = count+1;
+    }
+}
+
+/*
+var sl = StackLatNew(svg,"test",w, 400, info.min_ts, info.max_ts,StackLatDefaultFields);
+var svg2 = svg.append("svg").attr("transform","translate(0,500)");
+var sl2 = StackLatNew(svg2,"test2",w, 400, info.min_ts, info.max_ts,StackLatDefaultFields);
+sl.setData(info.data);
+sl2.setData(info.data);
+*/
+
+</script>
+
+
