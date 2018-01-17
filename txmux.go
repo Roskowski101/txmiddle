@@ -125,6 +125,7 @@ func txlogHostEsnPreviews(w http.ResponseWriter, r *http.Request) {
         end_t.Format(eentime.TimeFormat),
         PreviewFilter)
 
+    print(url+"\n");
     res, err := http.Get(url)
     if err != nil {
         errorJson(w,500,"no response")
@@ -150,6 +151,8 @@ func txlogHostEsnPreviews(w http.ResponseWriter, r *http.Request) {
         fields := strings.Fields(row)
         tp := fields[HdrMap["domain"]]+":"+fields[HdrMap["event"]]
         if mp := TypeMap[tp]; mp != nil {
+            // XXX we need to filter IMGS/IMGF/IMGE events that are related to IMKS/IMKE event
+            // to avoid f'ing up the display by showing them as late (since they are re-requested)
             time_ts,_ := eentime.Parse(fields[HdrMap["ts"]])
             time_float_ts := float64(time_ts.UnixNano())/1000000000.0
             event_ts,_ := eentime.Parse(fields[mp["ets"]])
@@ -160,6 +163,9 @@ func txlogHostEsnPreviews(w http.ResponseWriter, r *http.Request) {
                 or = make(map[string]float64,10)
                 out[event_float_ts] = or
                 keys = append(keys,event_float_ts)
+            }
+            if _,exists := or[tp]; exists {
+                continue;
             }
             or[tp] = time_float_ts-event_float_ts
         }

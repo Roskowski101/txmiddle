@@ -22,8 +22,9 @@ body {
 <body>
     <div style="border-bottom: 1px solid black; padding-bottom: 5px; margin-bottom: 10px">
         <label>ESN: <input title="camera esn to report on" type="text" value="none" id="esn" class="query" /></label>
-        <label>Start: <input title="Start TS of interval, if none or blank defaults to 1 hour before end, can also be -<integer seconds in past>" type="text" value="none" id="start" class="query" /></label>
-        <label>End: <input title="End TS or interval, if none or blank defaults to now, can also be -<integer seconds in past>" type="text" value="none" id="end" class="query" /></label>
+        <label>Start: <input title="Start TS of interval, if none or blank defaults to 1 hour before end, can also +/- durations from now (-3h etc)" type="text" value="none" id="start" class="query" /></label>
+        <label>End: <input title="End TS or interval, if none or blank defaults to now, supports durations from now ( e.g. -3h)" type="text" value="none" id="end" class="query" /></label>
+        <label>Host: <input title="Force host specified value" type="text" value="auto" id="host" class="query" /></label>
         <button id="query">Query</button>
     </div>
 </body>
@@ -85,8 +86,17 @@ function handle_resolve(data){
     end_ts_een = data.data.end_ts_een;
     var svg = d3.select("body").append("svg").attr("id","render").attr("width",w).attr("height",1500);
 
-    for (var index in data.data.addrs) {
-        var host = data.data.addrs[index];
+    host = d3.select("#host").property("value");
+    var addrs = [];
+    if(host == "auto" || host == "none" || host == ""){
+        addrs = data.data.addrs;
+    } else {
+        addrs.push(host);
+    }
+
+
+    for (var index in addrs) {
+        var host = addrs[index];
         var s = svg.append("svg").attr("id",host).attr("transform","translate(0,"+(count*500)+")");
         var sl = StackLatNew(s,host,host,esn,w,500,start_ts,end_ts,StackLatDefaultFields);
         getData(sl);
